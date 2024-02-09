@@ -1,0 +1,69 @@
+// Eris - Gomoku Engine
+// Author: Michal Witanowski (Witek902)
+
+#pragma once
+
+#include "bitboard.hpp"
+#include "square.hpp"
+
+enum class PatternType : uint8_t
+{
+    None,
+    OpenTwo,        // .XX..
+    BrokenTwo,      // .X.X.
+    OpenThree,      // .XXX.
+    BrokenThree,    // .XX.X. or .X.XX.
+    ClosedThree,    // |XXX.. or ..XXX|
+    OpenFour,       // .XXXX.
+    BrokenFour,     // XX.XX or X.XXX or XXX.X
+    ClosedFour,     // |XXXX. or .XXXX|
+    FiveInARow      // XXXXX
+};
+
+class Position
+{
+public:
+    Position();
+
+    std::string ToString() const;
+    void PrettyPrint() const;
+    void PrintThreats() const;
+    void PrintNeighborCounts() const;
+
+    bool FromString(const std::string& str);
+
+    bool IsMoveLegal(const Move move) const;
+    void MakeMove(const Move move);
+    void UnmakeMove(const Move move);
+
+    void GenerateCandidateMoves(Move* moves, uint32_t& count) const;
+    void GenerateMoves(Move* moves, uint32_t& count) const;
+
+    int32_t ScoreMove(const Move move) const;
+
+    GameResult GetGameResult() const;
+
+    // Build line window of length W (odd) centered at s for direction (dx,dy),
+    // mapped to 0/1/2 for a given perspective player 'us'.
+    // 0 - empty, 1 - us, 2 - opponent or border.
+    template<uint32_t WindowSize>
+    void BuildWindow(int32_t x, int32_t y, int dx, int dy, Stone us, Stone(&w)[WindowSize]) const;
+
+    PatternType EvalDirection(int32_t x, int32_t y, int dx, int dy, Stone us) const;
+
+    // Evaluate and cache patterns at square (x,y) for both colors and all directions
+    void EvaluatePatternsAtSquare(int32_t x, int32_t y);
+
+    // Evaluate and cache patterns in all squares around (x0,y0) within pattern window
+    void EvaluatePatternsAroundSquare(int32_t x0, int32_t y0);
+
+    uint64_t Perft(uint32_t depth, bool print);
+
+private:
+    Stone m_board[BOARD_SIZE * BOARD_SIZE];
+    PatternType m_patterns[BOARD_SIZE * BOARD_SIZE][2][4]; // cached patterns for each square, color and direction
+    uint8_t m_neighborCount[BOARD_SIZE * BOARD_SIZE];
+    Stone m_sideToMove;
+};
+
+void InitializePatternTable();
