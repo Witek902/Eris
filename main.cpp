@@ -10,8 +10,8 @@
 #include <random>
 
 #ifndef ERIS_VERSION
-#define ERIS_VERSION "0.1"
-#endif // ALPHAXO_VERSION
+#define ERIS_VERSION "0.2"
+#endif // ERIS_VERSION
 
 static const char* c_EngineName = "Eris " ERIS_VERSION;
 static const char* c_Author = "Michal Witanowski";
@@ -77,7 +77,7 @@ static bool Command_Position(const std::vector<std::string>& args)
                     std::cout << "Invalid move: " << args[i] << std::endl;
                     return false;
                 }
-                g_Position.MakeMove(moveSquare);
+                g_Position.MakeMove(moveSquare, g_Position.SideToMove());
             }
         }
     }
@@ -95,6 +95,8 @@ static bool Command_Position(const std::vector<std::string>& args)
 
 static bool Command_SelfPlay()
 {
+    const uint32_t numRandomMoves = 4;
+
     uint32_t blackWins = 0;
     uint32_t whiteWins = 0;
     uint32_t draws = 0;
@@ -105,23 +107,30 @@ static bool Command_SelfPlay()
     std::mt19937 gen(rd());
 
     // play random games
-    for (;;)
+    //for (;;)
     {
         Position pos;
 
-        uint32_t movesCount = 0;
-
-        while (pos.GetGameResult() == GameResult::InProgress)
+        for (uint32_t i = 0; i < numRandomMoves; ++i)
         {
-            movesCount = 0;
+            uint32_t movesCount = 0;
             pos.GenerateMoves(moves, movesCount);
 
             if (movesCount == 0)
                 break;
 
-            pos.MakeMove(moves[gen() % movesCount]);
+            pos.MakeMove(moves[gen() % movesCount], i % 2 == 0 ? Stone::Black : Stone::White);
+        }
+        pos.PrettyPrint();
 
-            //pos.PrettyPrint();
+        while (pos.GetGameResult() == GameResult::InProgress)
+        {
+            Move bestMove = Move::Invalid();
+            int32_t alpha = -100000000;
+            int32_t beta = 100000000;
+            NegaMax(pos, 0, 3, alpha, beta, bestMove);
+            pos.MakeMove(bestMove, pos.SideToMove());
+            pos.PrettyPrint();
         }
 
         switch (pos.GetGameResult())
@@ -145,54 +154,29 @@ static bool Command_SelfPlay()
     return true;
 }
 
+static bool Command_Go()
+{
+    for (uint32_t depth = 1; depth < 20; depth++)
+    {
+        Move bestMove = Move::Invalid();
+        int32_t alpha = -100000000;
+        int32_t beta = 100000000;
+        int32_t score = NegaMax(g_Position, 0, depth, alpha, beta, bestMove);
+        std::cout << "info depth " << depth << " move " << bestMove.ToString() << " score " << score << std::endl;
+    }
+
+    return true;
+}
+
 static bool BeginSearch()
 {
-    // make a random move
-    Move moves[SQUARE_COUNT];
-    int32_t scores[SQUARE_COUNT];
-    uint32_t movesCount = 0;
-    g_Position.GenerateCandidateMoves(moves, movesCount);
-    if (movesCount == 0)
-    {
-        g_Position.GenerateMoves(moves, movesCount);
-        if (movesCount == 0)
-        {
-            std::cout << "ERROR" << std::endl;
-            return false;
-        }
-    }
+    Move bestMove = Move::Invalid();
+    int32_t alpha = -100000000;
+    int32_t beta = 100000000;
+    int32_t score = NegaMax(g_Position, 0, 3, alpha, beta, bestMove);
 
-    // select best move
-    int32_t bestScore = 0;
-    for (uint32_t i = 0; i < movesCount; i++)
-    {
-        scores[i] = g_Position.ScoreMove(moves[i]);
-        bestScore = std::max(bestScore, scores[i]);
-    }
-
-    // remove moves that are not best
-    for (uint32_t i = 0; i < movesCount; )
-    {
-        if (scores[i] < bestScore)
-        {
-            // remove move
-            moves[i] = moves[movesCount - 1];
-            scores[i] = scores[movesCount - 1];
-            movesCount--;
-        }
-        else
-        {
-            i++;
-        }
-    }
-
-    // play random among best moves
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    const Move selectedMove = moves[gen() % movesCount];
-    std::cout << selectedMove.ToString() << std::endl;
-
-    g_Position.MakeMove(selectedMove);
+    std::cout << bestMove.ToString() << std::endl;
+    g_Position.MakeMove(bestMove, g_Position.SideToMove());
 
     return true;
 }
@@ -210,7 +194,61 @@ static bool ExecuteCommand(const std::string& commandString)
 
     const std::string& command = args[0];
 
-    if (command == "START")
+    static bool boardParsingMode = false;
+
+    if (boardParsingMode)
+    {
+        if (command == "DONE")
+        {
+            boardParsingMode = false;
+            BeginSearch();
+            return true;
+        }
+
+        int x = 0;
+        int y = 0;
+        int color = 0;
+        if (sscanf(command.c_str(), "%d,%d,%d", &x, &y, &color) != 3)
+        {
+            // invalid board line
+            boardParsingMode = false;
+            std::cout << "ERROR" << std::endl;
+            return true;
+        }
+
+        if (x < 0 || y < 0 || x >= (int)BOARD_SIZE || y >= (int)BOARD_SIZE)
+        {
+            // invalid coordinates
+            boardParsingMode = false;
+            std::cout << "ERROR" << std::endl;
+            return true;
+        }
+
+        const Square square(static_cast<uint8_t>(y * BOARD_SIZE + x));
+        if (!g_Position.IsMoveLegal(square))
+        {
+            // illegal move
+            boardParsingMode = false;
+            std::cout << "ERROR" << std::endl;
+            return true;
+        }
+
+        Stone stone = Stone::None;
+        if (color == 1)
+            stone = Stone::Black;
+        else if (color == 2)
+            stone = Stone::White;
+        else
+        {
+            // invalid color
+            boardParsingMode = false;
+            std::cout << "ERROR" << std::endl;
+            return true;
+        }
+
+        g_Position.MakeMove(square, stone);
+    }
+    else if (command == "START")
     {
         uint32_t boardSize = atoi(args[1].c_str());
         if (boardSize >= 5 && boardSize <= 19)
@@ -226,6 +264,10 @@ static bool ExecuteCommand(const std::string& commandString)
     else if (command == "ABOUT")
     {
         std::cout << "name=\"Eris\", version=\"" ERIS_VERSION "\", author=\"" << c_Author << "\", country=\"Poland\"" << std::endl;
+    }
+    else if (command == "BOARD")
+    {
+        boardParsingMode = true;
     }
     else if (command == "INFO")
     {
@@ -245,7 +287,7 @@ static bool ExecuteCommand(const std::string& commandString)
         }
         else
         {
-            g_Position.MakeMove(moveSquare);
+            g_Position.MakeMove(moveSquare, g_Position.SideToMove());
             BeginSearch();
         }
     }
@@ -277,7 +319,7 @@ static bool ExecuteCommand(const std::string& commandString)
     }
     else if (command == "go")
     {
-        BeginSearch();
+        Command_Go();
     }
     else if (command == "eval")
     {

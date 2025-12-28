@@ -1,5 +1,5 @@
 EXE                = eris
-VERSION            = 0.1
+VERSION            = 0.2
 EXE_NAME           = $(EXE)-$(VERSION)
 CC                 = g++
 SRC                = *.cpp
@@ -18,5 +18,5 @@ ifeq ($(EXT), .exe)
 	FLAGS += -static -static-libgcc -static-libstdc++
 endif
 
-alphaxo:
+eris:
 	$(CC)   $(SRC) -march=native -o $(EXE_NAME)$(EXT)

@@ -6,8 +6,6 @@
 #include <bitset>
 #include <chrono>
 
-static int32_t NeighborSize = 2;
-
 //--
 
 static constexpr uint32_t PatternTableSize = 19683; // 3^9
@@ -48,6 +46,27 @@ Position::Position()
     }
 
     m_sideToMove = Stone::Black;
+}
+
+bool Position::IsBoardEmpty() const
+{
+    for (uint32_t i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
+    {
+        if (m_board[i] != Stone::None)
+            return false;
+    }
+    return true;
+}
+
+uint32_t Position::GetOccupiedSquaresCount() const
+{
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
+    {
+        if (m_board[i] != Stone::None)
+            count++;
+    }
+    return count;
 }
 
 GameResult Position::GetGameResult() const
@@ -166,16 +185,17 @@ bool Position::IsMoveLegal(const Move move) const
     return m_board[move.m_index] == Stone::None;
 }
 
-void Position::MakeMove(const Move move)
+void Position::MakeMove(const Move move, const Stone color)
 {
     // ensure the move is legal
     ASSERT(m_board[move.m_index] == Stone::None);
+    ASSERT(color == Stone::Black || color == Stone::White);
 
     // make the move
-    m_board[move.m_index] = m_sideToMove;
+    m_board[move.m_index] = color;
 
     // switch side to move
-    m_sideToMove = ~m_sideToMove;
+    m_sideToMove = ~color;
 
     // update patterns cache in neighboring squares
     const int32_t x0 = (move.m_index % BOARD_SIZE);
@@ -183,9 +203,9 @@ void Position::MakeMove(const Move move)
     EvaluatePatternsAroundSquare(x0, y0);
 
     // increment neighbor counts
-    for (int32_t dy = -NeighborSize; dy <= NeighborSize; ++dy)
+    for (int32_t dy = -NEIGHBOR_SIZE; dy <= NEIGHBOR_SIZE; ++dy)
     {
-        for (int32_t dx = -NeighborSize; dx <= NeighborSize; ++dx)
+        for (int32_t dx = -NEIGHBOR_SIZE; dx <= NEIGHBOR_SIZE; ++dx)
         {
             // skip self
             if (dx == 0 && dy == 0)
@@ -217,9 +237,9 @@ void Position::UnmakeMove(const Move move)
     EvaluatePatternsAroundSquare(x0, y0);
 
     // decrement neighbor counts
-    for (int32_t dy = -NeighborSize; dy <= NeighborSize; ++dy)
+    for (int32_t dy = -NEIGHBOR_SIZE; dy <= NEIGHBOR_SIZE; ++dy)
     {
-        for (int32_t dx = -NeighborSize; dx <= NeighborSize; ++dx)
+        for (int32_t dx = -NEIGHBOR_SIZE; dx <= NEIGHBOR_SIZE; ++dx)
         {
             // skip self
             if (dx == 0 && dy == 0)
@@ -392,6 +412,11 @@ static PatternType ClassifyWindow(const Stone* w)
         if (w[i - 1] == Stone::None && w[i] == Stone::Us && w[i + 1] == Stone::None && w[i + 2] == Stone::Us && w[i + 3] == Stone::Us && w[i + 4] == Stone::None)
             return PatternType::BrokenThree;
 
+    // broken three - X.X.X
+    for (int i = 0; i <= 4; ++i)
+        if (w[i] == Stone::Us && w[i + 1] == Stone::None && w[i + 2] == Stone::Us && w[i + 3] == Stone::None && w[i + 4] == Stone::Us)
+            return PatternType::BrokenThree;
+
     // Twos:
 
     // detect open two - ..XX.
@@ -510,7 +535,7 @@ uint64_t Position::Perft(uint32_t depth, bool print)
         const Move move = moveList[i];
 
         Position child = *this;
-        child.MakeMove(move);
+        child.MakeMove(move, child.SideToMove());
         uint64_t numChildNodes = depth == 1 ? 1 : child.Perft(depth - 1, false);
 
         if (print)
@@ -533,4 +558,77 @@ uint64_t Position::Perft(uint32_t depth, bool print)
     }
 
     return nodes;
+}
+
+int32_t NegaMax(const Position& position, int32_t ply, int32_t depth, int32_t alpha, int32_t beta, Move& outBestMove)
+{
+    // TODO check only if last move was winning move
+    GameResult result = position.GetGameResult();
+    if (result == GameResult::BlackWins)
+        return (position.SideToMove() == Stone::Black) ? (10000000 - ply) : -(10000000 - ply);
+    else if (result == GameResult::WhiteWins)
+        return (position.SideToMove() == Stone::White) ? (10000000 - ply) : -(10000000 - ply);
+    else if (result == GameResult::Draw)
+        return 0;
+
+    // terminal node or depth limit reached
+    if (depth == 0)
+        return Evaluate(position);
+
+    Move moves[SQUARE_COUNT];
+    int32_t moveScores[SQUARE_COUNT];
+    uint32_t movesCount = 0;
+    position.GenerateCandidateMoves(moves, movesCount);
+    if (movesCount == 0)
+    {
+        position.GenerateMoves(moves, movesCount);
+        if (movesCount == 0)
+        {
+            return 0; // draw
+        }
+    }
+
+    // score and sort moves
+    for (uint32_t i = 0; i < movesCount; i++)
+    {
+        moveScores[i] = position.ScoreMove(moves[i]);
+    }
+    // simple bubble sort
+    for (uint32_t i = 0; i < movesCount - 1; i++)
+    {
+        for (uint32_t j = 0; j < movesCount - i - 1; j++)
+        {
+            if (moveScores[j] < moveScores[j + 1])
+            {
+                std::swap(moveScores[j], moveScores[j + 1]);
+                std::swap(moves[j], moves[j + 1]);
+            }
+        }
+    }
+
+    int32_t maxEval = -100000000;
+    for (uint32_t i = 0; i < movesCount; i++)
+    {
+        Position child = position;
+        child.MakeMove(moves[i], child.SideToMove());
+
+        Move dummyMove;
+        int32_t eval = -NegaMax(child, ply + 1, depth - 1, -beta, -alpha, dummyMove);
+
+        child.UnmakeMove(moves[i]);
+
+        if (eval > maxEval)
+        {
+            outBestMove = moves[i];
+            maxEval = eval;
+        }
+
+        if (maxEval > alpha)
+            alpha = maxEval;
+
+        if (alpha >= beta)
+            break; // beta cutoff
+    }
+
+    return maxEval;
 }

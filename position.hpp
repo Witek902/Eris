@@ -25,6 +25,8 @@ class Position
 public:
     Position();
 
+    INLINE Stone SideToMove() const { return m_sideToMove; }
+
     std::string ToString() const;
     void PrettyPrint() const;
     void PrintThreats() const;
@@ -33,7 +35,7 @@ public:
     bool FromString(const std::string& str);
 
     bool IsMoveLegal(const Move move) const;
-    void MakeMove(const Move move);
+    void MakeMove(const Move move, const Stone color);
     void UnmakeMove(const Move move);
 
     void GenerateCandidateMoves(Move* moves, uint32_t& count) const;
@@ -41,6 +43,8 @@ public:
 
     int32_t ScoreMove(const Move move) const;
 
+    bool IsBoardEmpty() const;
+    uint32_t GetOccupiedSquaresCount() const;
     GameResult GetGameResult() const;
 
     // Build line window of length W (odd) centered at s for direction (dx,dy),
@@ -60,6 +64,9 @@ public:
     uint64_t Perft(uint32_t depth, bool print);
 
 private:
+
+    friend ScoreType Evaluate(const Position& position);
+
     Stone m_board[BOARD_SIZE * BOARD_SIZE];
     PatternType m_patterns[BOARD_SIZE * BOARD_SIZE][2][4]; // cached patterns for each square, color and direction
     uint8_t m_neighborCount[BOARD_SIZE * BOARD_SIZE];
@@ -67,3 +74,5 @@ private:
 };
 
 void InitializePatternTable();
+
+int32_t NegaMax(const Position& position, int32_t ply, int32_t depth, int32_t alpha, int32_t beta, Move& outBestMove);

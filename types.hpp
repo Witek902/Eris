@@ -8,6 +8,9 @@
 static constexpr uint32_t BOARD_SIZE = 15;
 static constexpr uint32_t SQUARE_COUNT = BOARD_SIZE * BOARD_SIZE;
 
+static constexpr int32_t WINDOW_SIZE = 9; // must be odd
+static constexpr int32_t NEIGHBOR_SIZE = 2;
+
 using ScoreType = int32_t;
 
 enum class Stone : uint8_t
