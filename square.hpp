@@ -28,6 +28,16 @@ public:
         return m_index < BOARD_SIZE * BOARD_SIZE;
     }
 
+    INLINE bool operator == (const Square other) const
+    {
+        return m_index == other.m_index;
+    }
+
+    INLINE bool operator != (const Square other) const
+    {
+        return m_index != other.m_index;
+    }
+
     constexpr uint16_t x() const
     {
         return m_index % BOARD_SIZE;

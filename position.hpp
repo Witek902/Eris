@@ -34,6 +34,8 @@ public:
 
     bool FromString(const std::string& str);
 
+    uint64_t GetHash() const { return m_hash ^ (uint8_t)m_sideToMove; }
+
     bool IsMoveLegal(const Move move) const;
     void MakeMove(const Move move, const Stone color);
     void UnmakeMove(const Move move);
@@ -67,6 +69,7 @@ private:
 
     friend ScoreType Evaluate(const Position& position);
 
+    uint64_t m_hash;
     Stone m_board[BOARD_SIZE * BOARD_SIZE];
     PatternType m_patterns[BOARD_SIZE * BOARD_SIZE][2][4]; // cached patterns for each square, color and direction
     uint8_t m_neighborCount[BOARD_SIZE * BOARD_SIZE];
@@ -74,5 +77,3 @@ private:
 };
 
 void InitializePatternTable();
-
-int32_t NegaMax(const Position& position, int32_t ply, int32_t depth, int32_t alpha, int32_t beta, Move& outBestMove);

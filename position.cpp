@@ -2,6 +2,7 @@
 // Author: Michal Witanowski (Witek902)
 
 #include "position.hpp"
+#include "zobrist.hpp"
 
 #include <bitset>
 #include <chrono>
@@ -45,6 +46,7 @@ Position::Position()
         }
     }
 
+    m_hash = 0;
     m_sideToMove = Stone::Black;
 }
 
@@ -194,6 +196,9 @@ void Position::MakeMove(const Move move, const Stone color)
     // make the move
     m_board[move.m_index] = color;
 
+    // update hash
+    m_hash ^= s_ZobristHash[move.m_index][static_cast<uint8_t>(color) - static_cast<uint8_t>(Stone::Black)];
+
     // switch side to move
     m_sideToMove = ~color;
 
@@ -227,6 +232,10 @@ void Position::UnmakeMove(const Move move)
 {
     // switch side to move
     m_sideToMove = ~m_sideToMove;
+
+    // update hash
+    const Stone color = m_board[move.m_index];
+    m_hash ^= s_ZobristHash[move.m_index][static_cast<uint8_t>(color) - static_cast<uint8_t>(Stone::Black)];
 
     // unmake the move
     m_board[move.m_index] = Stone::None;
@@ -558,77 +567,4 @@ uint64_t Position::Perft(uint32_t depth, bool print)
     }
 
     return nodes;
-}
-
-int32_t NegaMax(const Position& position, int32_t ply, int32_t depth, int32_t alpha, int32_t beta, Move& outBestMove)
-{
-    // TODO check only if last move was winning move
-    GameResult result = position.GetGameResult();
-    if (result == GameResult::BlackWins)
-        return (position.SideToMove() == Stone::Black) ? (10000000 - ply) : -(10000000 - ply);
-    else if (result == GameResult::WhiteWins)
-        return (position.SideToMove() == Stone::White) ? (10000000 - ply) : -(10000000 - ply);
-    else if (result == GameResult::Draw)
-        return 0;
-
-    // terminal node or depth limit reached
-    if (depth == 0)
-        return Evaluate(position);
-
-    Move moves[SQUARE_COUNT];
-    int32_t moveScores[SQUARE_COUNT];
-    uint32_t movesCount = 0;
-    position.GenerateCandidateMoves(moves, movesCount);
-    if (movesCount == 0)
-    {
-        position.GenerateMoves(moves, movesCount);
-        if (movesCount == 0)
-        {
-            return 0; // draw
-        }
-    }
-
-    // score and sort moves
-    for (uint32_t i = 0; i < movesCount; i++)
-    {
-        moveScores[i] = position.ScoreMove(moves[i]);
-    }
-    // simple bubble sort
-    for (uint32_t i = 0; i < movesCount - 1; i++)
-    {
-        for (uint32_t j = 0; j < movesCount - i - 1; j++)
-        {
-            if (moveScores[j] < moveScores[j + 1])
-            {
-                std::swap(moveScores[j], moveScores[j + 1]);
-                std::swap(moves[j], moves[j + 1]);
-            }
-        }
-    }
-
-    int32_t maxEval = -100000000;
-    for (uint32_t i = 0; i < movesCount; i++)
-    {
-        Position child = position;
-        child.MakeMove(moves[i], child.SideToMove());
-
-        Move dummyMove;
-        int32_t eval = -NegaMax(child, ply + 1, depth - 1, -beta, -alpha, dummyMove);
-
-        child.UnmakeMove(moves[i]);
-
-        if (eval > maxEval)
-        {
-            outBestMove = moves[i];
-            maxEval = eval;
-        }
-
-        if (maxEval > alpha)
-            alpha = maxEval;
-
-        if (alpha >= beta)
-            break; // beta cutoff
-    }
-
-    return maxEval;
 }

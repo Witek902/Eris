@@ -134,6 +134,9 @@
     <ClCompile Include="..\eval.cpp" />
     <ClCompile Include="..\main.cpp" />
     <ClCompile Include="..\position.cpp" />
+    <ClCompile Include="..\search.cpp" />
+    <ClCompile Include="..\transposition.cpp" />
+    <ClCompile Include="..\zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\makefile" />
@@ -143,8 +146,11 @@
     <ClInclude Include="..\common.hpp" />
     <ClInclude Include="..\eval.hpp" />
     <ClInclude Include="..\position.hpp" />
+    <ClInclude Include="..\search.hpp" />
     <ClInclude Include="..\square.hpp" />
+    <ClInclude Include="..\transposition.hpp" />
     <ClInclude Include="..\types.hpp" />
+    <ClInclude Include="..\zobrist.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

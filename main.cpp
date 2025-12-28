@@ -3,6 +3,9 @@
 
 #include "position.hpp"
 #include "eval.hpp"
+#include "zobrist.hpp"
+#include "transposition.hpp"
+#include "search.hpp"
 
 #include <string>
 #include <iostream>
@@ -10,13 +13,14 @@
 #include <random>
 
 #ifndef ERIS_VERSION
-#define ERIS_VERSION "0.2"
+#define ERIS_VERSION "0.3"
 #endif // ERIS_VERSION
 
 static const char* c_EngineName = "Eris " ERIS_VERSION;
 static const char* c_Author = "Michal Witanowski";
 
 static Position g_Position;
+static TranspositionTable g_TranspositionTable;
 
 static void ParseCommandString(const std::string& str, std::vector<std::string>& outArgList)
 {
@@ -106,6 +110,8 @@ static bool Command_SelfPlay()
     std::random_device rd;
     std::mt19937 gen(rd());
 
+    TranspositionTable tt;
+
     // play random games
     //for (;;)
     {
@@ -126,10 +132,14 @@ static bool Command_SelfPlay()
         while (pos.GetGameResult() == GameResult::InProgress)
         {
             Move bestMove = Move::Invalid();
-            int32_t alpha = -100000000;
-            int32_t beta = 100000000;
-            NegaMax(pos, 0, 3, alpha, beta, bestMove);
+            for (uint32_t depth = 1; depth < 5; depth++)
+            {
+                int32_t alpha = -100000000;
+                int32_t beta = 100000000;
+                int32_t score = NegaMax(pos, g_TranspositionTable, 0, depth, alpha, beta, bestMove);
+            }
             pos.MakeMove(bestMove, pos.SideToMove());
+
             pos.PrettyPrint();
         }
 
@@ -156,12 +166,12 @@ static bool Command_SelfPlay()
 
 static bool Command_Go()
 {
+    Move bestMove = Move::Invalid();
     for (uint32_t depth = 1; depth < 20; depth++)
     {
-        Move bestMove = Move::Invalid();
         int32_t alpha = -100000000;
         int32_t beta = 100000000;
-        int32_t score = NegaMax(g_Position, 0, depth, alpha, beta, bestMove);
+        int32_t score = NegaMax(g_Position, g_TranspositionTable, 0, depth, alpha, beta, bestMove);
         std::cout << "info depth " << depth << " move " << bestMove.ToString() << " score " << score << std::endl;
     }
 
@@ -171,13 +181,15 @@ static bool Command_Go()
 static bool BeginSearch()
 {
     Move bestMove = Move::Invalid();
-    int32_t alpha = -100000000;
-    int32_t beta = 100000000;
-    int32_t score = NegaMax(g_Position, 0, 3, alpha, beta, bestMove);
+    for (uint32_t depth = 1; depth < 4; depth++)
+    {
+        int32_t alpha = -100000000;
+        int32_t beta = 100000000;
+        int32_t score = NegaMax(g_Position, g_TranspositionTable, 0, depth, alpha, beta, bestMove);
+    }
 
     std::cout << bestMove.ToString() << std::endl;
     g_Position.MakeMove(bestMove, g_Position.SideToMove());
-
     return true;
 }
 
@@ -260,6 +272,7 @@ static bool ExecuteCommand(const std::string& commandString)
         {
             std::cout << "ERROR" << std::endl;
         }
+        g_TranspositionTable.Clear();
     }
     else if (command == "ABOUT")
     {
@@ -378,6 +391,23 @@ static bool ExecuteCommand(const std::string& commandString)
         }
         std::cout << std::endl;
     }
+    else if (command == "ttprobe") // probe transposition table
+    {
+        uint64_t hash = g_Position.GetHash();
+        TTEntry* entry = g_TranspositionTable.Probe(hash);
+        if (entry)
+        {
+            std::cout << "TT Entry found: "
+                << "score=" << entry->score
+                << " depth=" << (int)entry->depth
+                << " flags=" << (int)entry->flags
+                << " bestmove=" << entry->bestMove.ToString() << std::endl;
+        }
+        else
+        {
+            std::cout << "TT Entry not found" << std::endl;
+        }
+    }
     else
     {
         std::cout << "Invalid command" << std::endl;
@@ -388,6 +418,7 @@ static bool ExecuteCommand(const std::string& commandString)
 
 int main(int argc, char* argv[])
 {
+    InitZobristHash();
     InitializePatternTable();
 
     for (int i = 1; i < argc; ++i)
