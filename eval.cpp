@@ -55,7 +55,7 @@ ScoreType Evaluate(const Position & position)
                         score[c] += 800;
                         break;
                     case PatternType::OpenFour:
-                        score[c] += 10000;
+                        score[c] += 100000;
                         break;
                     case PatternType::ClosedFour:
                         score[c] += 5000;
