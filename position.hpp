@@ -3,26 +3,14 @@
 
 #pragma once
 
-#include "bitboard.hpp"
 #include "square.hpp"
-
-enum class PatternType : uint8_t
-{
-    None,
-    OpenTwo,        // .XX..
-    BrokenTwo,      // .X.X.
-    OpenThree,      // .XXX.
-    BrokenThree,    // .XX.X. or .X.XX.
-    ClosedThree,    // |XXX.. or ..XXX|
-    OpenFour,       // .XXXX.
-    BrokenFour,     // XX.XX or X.XXX or XXX.X
-    ClosedFour,     // |XXXX. or .XXXX|
-    FiveInARow      // XXXXX
-};
 
 class Position
 {
 public:
+
+    using Patterns = PatternType[BOARD_SIZE * BOARD_SIZE][2][4];
+
     Position();
 
     INLINE Stone SideToMove() const { return m_sideToMove; }
@@ -35,6 +23,7 @@ public:
     bool FromString(const std::string& str);
 
     uint64_t GetHash() const { return m_hash ^ (uint8_t)m_sideToMove; }
+    const Patterns& GetPatterns() const { return m_patterns; }
 
     bool IsMoveLegal(const Move move) const;
     void MakeMove(const Move move, const Stone color);
@@ -71,9 +60,7 @@ private:
 
     uint64_t m_hash;
     Stone m_board[BOARD_SIZE * BOARD_SIZE];
-    PatternType m_patterns[BOARD_SIZE * BOARD_SIZE][2][4]; // cached patterns for each square, color and direction
+    Patterns m_patterns; // cached patterns for each square, color and direction
     uint8_t m_neighborCount[BOARD_SIZE * BOARD_SIZE];
     Stone m_sideToMove;
 };
-
-void InitializePatternTable();

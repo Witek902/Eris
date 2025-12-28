@@ -6,12 +6,19 @@
 #include "square.hpp"
 #include <vector>
 
+enum class TTFlags : uint8_t
+{
+    Exact   = 0,
+    Lower   = 1,
+    Upper   = 2,
+};
+
 struct TTEntry
 {
     uint16_t key;
     ScoreType score;
     uint8_t depth;
-    uint8_t flags;
+    TTFlags flags;
     Square bestMove;
 };
 
@@ -27,7 +34,7 @@ public:
     TTEntry* Probe(uint64_t hash);
 
     // Store an entry in the transposition table
-    void Store(uint64_t hash, ScoreType score, uint8_t depth, uint8_t flags, Square bestMove);
+    void Store(uint64_t hash, ScoreType score, uint8_t depth, TTFlags flags, Square bestMove);
 
 private:
     std::vector<TTEntry> m_table;

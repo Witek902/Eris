@@ -11,6 +11,10 @@ static constexpr uint32_t SQUARE_COUNT = BOARD_SIZE * BOARD_SIZE;
 static constexpr int32_t WINDOW_SIZE = 9; // must be odd
 static constexpr int32_t NEIGHBOR_SIZE = 2;
 
+static constexpr int32_t MATE_VALUE = 1'000'000'000;
+static constexpr int32_t INF_VALUE = 2'000'000'000;
+
+enum class PatternType : uint8_t;
 class Position;
 class TranspositionTable;
 

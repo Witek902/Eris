@@ -28,7 +28,7 @@ TTEntry* TranspositionTable::Probe(uint64_t hash)
 }
 
 // Store an entry in the transposition table
-void TranspositionTable::Store(uint64_t hash, ScoreType score, uint8_t depth, uint8_t flags, Square bestMove)
+void TranspositionTable::Store(uint64_t hash, ScoreType score, uint8_t depth, TTFlags flags, Square bestMove)
 {
     const size_t index = hash % m_table.size();
     TTEntry& entry = m_table[index];

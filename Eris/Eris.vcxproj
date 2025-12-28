@@ -133,6 +133,7 @@
     <ClCompile Include="..\bitboard.cpp" />
     <ClCompile Include="..\eval.cpp" />
     <ClCompile Include="..\main.cpp" />
+    <ClCompile Include="..\pattern.cpp" />
     <ClCompile Include="..\position.cpp" />
     <ClCompile Include="..\search.cpp" />
     <ClCompile Include="..\transposition.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="..\bitboard.hpp" />
     <ClInclude Include="..\common.hpp" />
     <ClInclude Include="..\eval.hpp" />
+    <ClInclude Include="..\pattern.hpp" />
     <ClInclude Include="..\position.hpp" />
     <ClInclude Include="..\search.hpp" />
     <ClInclude Include="..\square.hpp" />

@@ -10,7 +10,7 @@
 struct SearchParams
 {
     TranspositionTable& tt;
-    const Position& position; 
+    Position& position; 
 
     bool debugOutput = false;
 

@@ -6,6 +6,7 @@
 #include "zobrist.hpp"
 #include "transposition.hpp"
 #include "search.hpp"
+#include "pattern.hpp"
 
 #include <string>
 #include <iostream>
@@ -135,7 +136,7 @@ static bool Command_SelfPlay()
             Move bestMove = Move::Invalid();
 
             SearchParams params{ g_TranspositionTable, pos };
-            params.maxTime = std::chrono::milliseconds(100);
+            params.maxTime = std::chrono::milliseconds(1000);
             DoSearch(params, bestMove, score);
 
             pos.MakeMove(bestMove, pos.SideToMove());

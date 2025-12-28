@@ -3,10 +3,11 @@
 
 #include "position.hpp"
 #include "eval.hpp"
+#include "pattern.hpp"
 
-static int32_t SIDE_TO_MOVE_BONUS = 20;
+static int32_t SIDE_TO_MOVE_BONUS = 25;
 
-ScoreType Evaluate(const Position& position)
+ScoreType Evaluate(const Position & position)
 {
     const uint32_t center = BOARD_SIZE / 2;
 
@@ -20,7 +21,6 @@ ScoreType Evaluate(const Position& position)
         {
             const uint32_t squareIndex = x + y * BOARD_SIZE;
 
-            /*
             // penalty for distance from center
             if (position.m_board[squareIndex] == Stone::Black)
             {
@@ -32,8 +32,7 @@ ScoreType Evaluate(const Position& position)
                 score[1] -= std::abs(static_cast<int32_t>(x) - static_cast<int32_t>(center));
                 score[1] -= std::abs(static_cast<int32_t>(y) - static_cast<int32_t>(center));
             }
-            */
-            
+
             for (uint32_t c = 0; c < 2; ++c)
             {
                 for (uint32_t dir = 0; dir < 4; ++dir)
@@ -53,7 +52,7 @@ ScoreType Evaluate(const Position& position)
                         score[c] += 500;
                         break;
                     case PatternType::BrokenThree:
-                        score[c] += 1000;
+                        score[c] += 800;
                         break;
                     case PatternType::OpenFour:
                         score[c] += 10000;
@@ -62,7 +61,7 @@ ScoreType Evaluate(const Position& position)
                         score[c] += 5000;
                         break;
                     case PatternType::BrokenFour:
-                        score[c] += 10000;
+                        score[c] += 8000;
                         break;
                     case PatternType::FiveInARow:
                         score[c] += 1000000;
