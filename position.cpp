@@ -33,6 +33,8 @@ Position::Position()
 
     m_hash = 0;
     m_sideToMove = Stone::Black;
+    m_lastMove = Move::Invalid();
+    m_movesPlayed = 0;
 }
 
 bool Position::IsBoardEmpty() const
@@ -58,21 +60,22 @@ uint32_t Position::GetOccupiedSquaresCount() const
 
 GameResult Position::GetGameResult() const
 {
+    if (m_lastMove == Move::Invalid())
+        return GameResult::InProgress;
+
     // check if black has connected five
-    for (uint32_t i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
-        for (uint32_t dir = 0; dir < 4; ++dir)
-            if (m_patterns[i][0][dir] == PatternType::FiveInARow)
-                return GameResult::BlackWins;
+    for (uint32_t dir = 0; dir < 4; ++dir)
+        if (m_patterns[m_lastMove.m_index][0][dir] == PatternType::FiveInARow)
+            return GameResult::BlackWins;
 
     // check if white has connected five
-    for (uint32_t i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
-        for (uint32_t dir = 0; dir < 4; ++dir)
-            if (m_patterns[i][1][dir] == PatternType::FiveInARow)
-                return GameResult::WhiteWins;
+    for (uint32_t dir = 0; dir < 4; ++dir)
+        if (m_patterns[m_lastMove.m_index][1][dir] == PatternType::FiveInARow)
+            return GameResult::WhiteWins;
 
-    for (uint32_t i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
-        if (m_board[i] == Stone::None)
-            return GameResult::InProgress;
+    // game is still in progress
+    if (m_movesPlayed < BOARD_SIZE * BOARD_SIZE)
+        return GameResult::InProgress;
 
     // all squares are filled - it's a draw
     return GameResult::Draw;
@@ -188,6 +191,9 @@ void Position::MakeMove(const Move move, const Stone color)
     // switch side to move
     m_sideToMove = ~color;
 
+    m_lastMove = move;
+    m_movesPlayed++;
+
     // update patterns cache in neighboring squares
     const int32_t x0 = (move.m_index % BOARD_SIZE);
     const int32_t y0 = (move.m_index / BOARD_SIZE);
@@ -211,11 +217,13 @@ void Position::MakeMove(const Move move, const Stone color)
             }
         }
     }
-
 }
 
 void Position::UnmakeMove(const Move move)
 {
+    ASSERT(m_movesPlayed > 0);
+    ASSERT(m_board[move.m_index] != Stone::None);
+
     // switch side to move
     m_sideToMove = ~m_sideToMove;
 
@@ -225,6 +233,9 @@ void Position::UnmakeMove(const Move move)
 
     // unmake the move
     m_board[move.m_index] = Stone::None;
+
+    m_lastMove = Move::Invalid();
+    m_movesPlayed--;
 
     // update patterns cache in neighboring squares
     const int32_t x0 = (move.m_index % BOARD_SIZE);

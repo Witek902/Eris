@@ -62,5 +62,7 @@ private:
     Stone m_board[BOARD_SIZE * BOARD_SIZE];
     Patterns m_patterns; // cached patterns for each square, color and direction
     uint8_t m_neighborCount[BOARD_SIZE * BOARD_SIZE];
+    uint16_t m_movesPlayed;
+    Move m_lastMove; // invalid after UnmakeMove
     Stone m_sideToMove;
 };

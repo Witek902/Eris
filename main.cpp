@@ -136,7 +136,7 @@ static bool Command_SelfPlay()
             Move bestMove = Move::Invalid();
 
             SearchParams params{ g_TranspositionTable, pos };
-            params.maxTime = std::chrono::milliseconds(500);
+            params.maxTime = std::chrono::milliseconds(200);
             params.maxDepth = 50;
             DoSearch(params, bestMove, score);
 

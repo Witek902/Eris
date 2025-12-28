@@ -12,6 +12,8 @@ struct SearchContext
     TranspositionTable& tt;
     std::chrono::time_point<std::chrono::high_resolution_clock> endTime;
 
+    uint64_t nodesSearched = 0;
+
     Move killers[SQUARE_COUNT+1][2];
 
     INLINE void StoreKiller(uint32_t ply, Move m)
@@ -138,6 +140,8 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
 
         node.position.MakeMove(move, node.position.SideToMove());
 
+        context.nodesSearched++;
+
         Node childNode{ node.position };
         childNode.ply = node.ply + 1;
 
@@ -195,7 +199,7 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
 void DoSearch(const SearchParams& params, Move& outBestMove, int32_t& outScore)
 {
     // remember start time
-    auto startTime = std::chrono::high_resolution_clock::now();
+    const auto startTime = std::chrono::high_resolution_clock::now();
 
     SearchContext context{ params.tt };
     context.endTime = startTime + params.maxTime;
@@ -227,7 +231,15 @@ void DoSearch(const SearchParams& params, Move& outBestMove, int32_t& outScore)
 
         if (params.debugOutput)
         {
-            std::cout << "info depth " << depth << " score " << score << " pv ";
+            const auto elapsedTime = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime - startTime).count();
+            const auto nps = context.nodesSearched * 1000000000ull / (elapsedTime + 1);
+
+            std::cout
+                << "info depth " << depth
+                << " score " << score
+                << " nodes " << context.nodesSearched
+                << " nps " << nps
+                << " pv ";
             for (uint32_t i = 0; i < rootNode.pvLength; ++i)
             {
                 std::cout << rootNode.pvLine[i].ToString() << " ";
