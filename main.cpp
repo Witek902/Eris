@@ -136,12 +136,15 @@ static bool Command_SelfPlay()
             Move bestMove = Move::Invalid();
 
             SearchParams params{ g_TranspositionTable, pos };
-            params.maxTime = std::chrono::milliseconds(1000);
+            params.maxTime = std::chrono::milliseconds(500);
+            params.maxDepth = 50;
             DoSearch(params, bestMove, score);
 
             pos.MakeMove(bestMove, pos.SideToMove());
 
             pos.PrettyPrint();
+
+            std::cout << "Score: " << score << std::endl;
         }
 
         switch (pos.GetGameResult())

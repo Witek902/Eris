@@ -11,6 +11,16 @@ struct SearchContext
 {
     TranspositionTable& tt;
     std::chrono::time_point<std::chrono::high_resolution_clock> endTime;
+
+    Move killers[SQUARE_COUNT+1][2];
+
+    INLINE void StoreKiller(uint32_t ply, Move m)
+    {
+        if (m == killers[ply][0])
+            return;
+        killers[ply][1] = killers[ply][0];
+        killers[ply][0] = m;
+    }
 };
 
 struct Node
@@ -95,6 +105,10 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
     {
         if (moves[i] == ttMove)
             moveScores[i] = INT32_MAX; 
+        else if (moves[i] == context.killers[node.ply][0])
+            moveScores[i] = INT32_MAX - 1;
+        else if (moves[i] == context.killers[node.ply][1])
+            moveScores[i] = INT32_MAX - 2;
         else
             moveScores[i] = node.position.ScoreMove(moves[i]);
     }
@@ -127,8 +141,6 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
         Node childNode{ node.position };
         childNode.ply = node.ply + 1;
 
-        //int32_t score = -NegaMax(childNode, context, depth - 1, -beta, -alpha);
-
         // principal variation search
         int32_t score;
         if (i == 0)
@@ -141,7 +153,6 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
             if (score > alpha && score < beta)
                 score = -NegaMax(childNode, context, depth - 1, -beta, -alpha);
         }
-
 
         node.position.UnmakeMove(moves[i]);
 
@@ -161,10 +172,13 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
         if (bestScore > alpha)
             alpha = bestScore;
 
+        // beta cutoff
         if (alpha >= beta)
-            break; // beta cutoff
+        {
+            context.StoreKiller(node.ply, move);
+            break; 
+        }
     }
-
 
     // store in transposition table
     {
@@ -185,6 +199,12 @@ void DoSearch(const SearchParams& params, Move& outBestMove, int32_t& outScore)
 
     SearchContext context{ params.tt };
     context.endTime = startTime + params.maxTime;
+
+    for (int p = 0; p < SQUARE_COUNT; ++p)
+    {
+        context.killers[p][0] = Move::Invalid();
+        context.killers[p][1] = Move::Invalid();
+    }
 
     int32_t bestScore = 0;
     Move bestMove = Move::Invalid();
