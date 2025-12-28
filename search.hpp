@@ -5,6 +5,18 @@
 
 #include "square.hpp"
 
-void DoSearch(const Position& position, TranspositionTable& tt, Move& outBestMove, int32_t& outScore);
+#include <chrono>
 
-int32_t NegaMax(const Position& position, TranspositionTable& tt, int32_t ply, int32_t depth, int32_t alpha, int32_t beta, Move& outBestMove);
+struct SearchParams
+{
+    TranspositionTable& tt;
+    const Position& position; 
+
+    bool debugOutput = false;
+
+    // search limits:
+    uint32_t maxDepth = 20; // maximum search depth
+    std::chrono::milliseconds maxTime = std::chrono::milliseconds(100); // maximum search time
+};
+
+void DoSearch(const SearchParams& params, Move& outBestMove, int32_t& outScore);

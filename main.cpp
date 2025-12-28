@@ -131,13 +131,13 @@ static bool Command_SelfPlay()
 
         while (pos.GetGameResult() == GameResult::InProgress)
         {
+            int32_t score = 0;
             Move bestMove = Move::Invalid();
-            for (uint32_t depth = 1; depth < 5; depth++)
-            {
-                int32_t alpha = -100000000;
-                int32_t beta = 100000000;
-                int32_t score = NegaMax(pos, g_TranspositionTable, 0, depth, alpha, beta, bestMove);
-            }
+
+            SearchParams params{ g_TranspositionTable, pos };
+            params.maxTime = std::chrono::milliseconds(100);
+            DoSearch(params, bestMove, score);
+
             pos.MakeMove(bestMove, pos.SideToMove());
 
             pos.PrettyPrint();
@@ -166,27 +166,23 @@ static bool Command_SelfPlay()
 
 static bool Command_Go()
 {
+    int32_t score = 0;
     Move bestMove = Move::Invalid();
-    for (uint32_t depth = 1; depth < 20; depth++)
-    {
-        int32_t alpha = -100000000;
-        int32_t beta = 100000000;
-        int32_t score = NegaMax(g_Position, g_TranspositionTable, 0, depth, alpha, beta, bestMove);
-        std::cout << "info depth " << depth << " move " << bestMove.ToString() << " score " << score << std::endl;
-    }
+    SearchParams params{ g_TranspositionTable, g_Position };
+    params.maxTime = std::chrono::seconds(10);
+    params.debugOutput = true;
+    DoSearch(params, bestMove, score);
 
     return true;
 }
 
 static bool BeginSearch()
 {
+    int32_t score = 0;
     Move bestMove = Move::Invalid();
-    for (uint32_t depth = 1; depth < 4; depth++)
-    {
-        int32_t alpha = -100000000;
-        int32_t beta = 100000000;
-        int32_t score = NegaMax(g_Position, g_TranspositionTable, 0, depth, alpha, beta, bestMove);
-    }
+    SearchParams params{ g_TranspositionTable, g_Position };
+    params.maxTime = std::chrono::milliseconds(1000); // 1 second per move
+    DoSearch(params, bestMove, score);
 
     std::cout << bestMove.ToString() << std::endl;
     g_Position.MakeMove(bestMove, g_Position.SideToMove());
