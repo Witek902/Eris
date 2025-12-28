@@ -8,6 +8,9 @@
 #include <bitset>
 #include <chrono>
 
+static constexpr int32_t dxs[4] = { 1, 0, 1, 1 };
+static constexpr int32_t dys[4] = { 0, 1, 1, -1 };
+
 static bool OnBoard(int32_t x, int32_t y)
 {
     return x >= 0 && x < (int32_t)BOARD_SIZE && y >= 0 && y < (int32_t)BOARD_SIZE;
@@ -278,9 +281,6 @@ int32_t Position::ScoreMove(const Move move) const
     const int32_t x0 = move.m_index % BOARD_SIZE;
     const int32_t y0 = move.m_index / BOARD_SIZE;
 
-    const int32_t dxs[4] = { 1, 0, 1, 1 };
-    const int32_t dys[4] = { 0, 1, 1, -1 };
-
     PatternType bestPattern = PatternType::None;
     for (uint32_t dir = 0; dir < 4; ++dir)
     {
@@ -347,7 +347,7 @@ PatternType Position::EvalDirection(int32_t x, int32_t y, int dx, int dy, Stone 
     return gPatternTable[patternCode];
 }
 
-void Position::EvaluatePatternsAtSquare(int32_t x, int32_t y)
+void Position::EvaluatePatternsAtSquare(int32_t x, int32_t y, uint32_t dir)
 {
     ASSERT(x >= 0 && x < (int32_t)BOARD_SIZE);
     ASSERT(y >= 0 && y < (int32_t)BOARD_SIZE);
@@ -355,10 +355,7 @@ void Position::EvaluatePatternsAtSquare(int32_t x, int32_t y)
     for (uint32_t color = 0; color < 2; ++color)
     {
         const Stone us = (color == 0) ? Stone::Black : Stone::White;
-        m_patterns[squareIndex][color][0] = EvalDirection(x, y, 1, 0, us);  // horizontal
-        m_patterns[squareIndex][color][1] = EvalDirection(x, y, 0, 1, us);  // vertical
-        m_patterns[squareIndex][color][2] = EvalDirection(x, y, 1, -1, us); // diagonal
-        m_patterns[squareIndex][color][3] = EvalDirection(x, y, 1, 1, us);  // diagonal
+        m_patterns[squareIndex][color][dir] = EvalDirection(x, y, dxs[dir], dys[dir], us);
     }
 }
 
@@ -367,13 +364,13 @@ void Position::EvaluatePatternsAroundSquare(int32_t x0, int32_t y0)
     for (int32_t i = -4; i <= 4; ++i)
     {
         if (OnBoard(x0 + i, y0))
-            EvaluatePatternsAtSquare(x0 + i, y0); // horizontal
+            EvaluatePatternsAtSquare(x0 + i, y0, 0); // horizontal
         if (OnBoard(x0, y0 + i))
-            EvaluatePatternsAtSquare(x0, y0 + i); // vertical
+            EvaluatePatternsAtSquare(x0, y0 + i, 1); // vertical
         if (OnBoard(x0 + i, y0 + i))
-            EvaluatePatternsAtSquare(x0 + i, y0 + i); // diagonal
+            EvaluatePatternsAtSquare(x0 + i, y0 + i, 2); // diagonal
         if (OnBoard(x0 + i, y0 - i))
-            EvaluatePatternsAtSquare(x0 + i, y0 - i); // diagonal
+            EvaluatePatternsAtSquare(x0 + i, y0 - i, 3); // diagonal
     }
 }
 

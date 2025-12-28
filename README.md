@@ -1,3 +1,3 @@
-# AlphaXO
+# Eris
 
-UTTT (Ultimate Tic Tac Toe) engine written in C++.
+Gomoku engine written in C++ from scratch.

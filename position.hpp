@@ -47,7 +47,7 @@ public:
     PatternType EvalDirection(int32_t x, int32_t y, int dx, int dy, Stone us) const;
 
     // Evaluate and cache patterns at square (x,y) for both colors and all directions
-    void EvaluatePatternsAtSquare(int32_t x, int32_t y);
+    void EvaluatePatternsAtSquare(int32_t x, int32_t y, uint32_t dir);
 
     // Evaluate and cache patterns in all squares around (x0,y0) within pattern window
     void EvaluatePatternsAroundSquare(int32_t x0, int32_t y0);

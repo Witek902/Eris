@@ -14,7 +14,7 @@
 #include <random>
 
 #ifndef ERIS_VERSION
-#define ERIS_VERSION "0.3"
+#define ERIS_VERSION "0.4"
 #endif // ERIS_VERSION
 
 static const char* c_EngineName = "Eris " ERIS_VERSION;
@@ -182,7 +182,7 @@ static bool BeginSearch()
     int32_t score = 0;
     Move bestMove = Move::Invalid();
     SearchParams params{ g_TranspositionTable, g_Position };
-    params.maxTime = std::chrono::milliseconds(1000); // 1 second per move
+    params.maxTime = std::chrono::milliseconds(500); // 0.5 second per move
     DoSearch(params, bestMove, score);
 
     std::cout << bestMove.ToString() << std::endl;
@@ -381,7 +381,7 @@ static bool ExecuteCommand(const std::string& commandString)
         Move moves[SQUARE_COUNT];
         uint32_t movesCount = 0;
         g_Position.GenerateCandidateMoves(moves, movesCount);
-        std::cout << "Candidate moves (" << movesCount << "): ";
+        std::cout << "Candidate moves (" << movesCount << "): " << std::endl;
         for (uint32_t i = 0; i < movesCount; i++)
         {
             std::cout << moves[i].ToString() << "   " << g_Position.ScoreMove(moves[i]) << std::endl;

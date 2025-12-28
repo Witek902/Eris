@@ -1,5 +1,5 @@
 EXE                = eris
-VERSION            = 0.3
+VERSION            = 0.4
 EXE_NAME           = $(EXE)-$(VERSION)
 CC                 = g++
 SRC                = *.cpp
