@@ -23,7 +23,7 @@ public:
     bool FromString(const std::string& str);
 
     uint64_t GetHash() const { return m_hash ^ (uint8_t)m_sideToMove; }
-    const Patterns& GetPatterns() const { return m_patterns; }
+    const Patterns& GetThreats() const { return m_threats; }
 
     bool IsMoveLegal(const Move move) const;
     void MakeMove(const Move move, const Stone color);
@@ -60,7 +60,7 @@ private:
 
     uint64_t m_hash;
     Stone m_board[BOARD_SIZE * BOARD_SIZE];
-    Patterns m_patterns; // cached patterns for each square, color and direction
+    Patterns m_threats; // cached threats patterns for each square, color and direction
     uint8_t m_neighborCount[BOARD_SIZE * BOARD_SIZE];
     uint16_t m_movesPlayed;
     Move m_lastMove; // invalid after UnmakeMove

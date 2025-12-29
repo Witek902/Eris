@@ -8,27 +8,13 @@ PatternType gPatternTable[PatternTableSize];
 
 
 template<uint32_t WindowSize>
-static uint32_t CountRun(const Stone* w, int32_t start, int32_t dir)
-{
-    uint32_t c = 0;
-    for (int32_t i = start; i >= 0 && i < WindowSize; i += dir)
-    {
-        if (w[i] == Stone::Us)
-            c++;
-        else
-            break;
-    }
-    return c;
-}
-
-template<uint32_t WindowSize>
 static PatternType ClassifyWindow(const Stone* w)
 {
     constexpr uint32_t C = WindowSize / 2;
 
     // center must be US
-    //if (w[C] != Stone::Us)
-    //    return PatternType::None;
+    if (w[C] != Stone::Us)
+        return PatternType::None;
 
     // detect five in a row - XXXXX
     for (int i = 0; i <= 4; ++i)
@@ -117,6 +103,16 @@ static PatternType ClassifyWindow(const Stone* w)
         if (w[i] == Stone::None && w[i + 1] == Stone::Us && w[i + 2] == Stone::Us && w[i + 3] == Stone::None && w[i + 4] == Stone::None)
             return PatternType::OpenTwo;
 
+    // detect open two - XX...
+    for (int i = 0; i <= 5; ++i)
+        if (w[i] == Stone::Us && w[i + 1] == Stone::Us && w[i + 2] == Stone::None && w[i + 3] == Stone::None && w[i + 4] == Stone::None)
+            return PatternType::OpenTwo;
+
+    // detect open two - ...XX
+    for (int i = 0; i <= 5; ++i)
+        if (w[i] == Stone::None && w[i + 1] == Stone::None && w[i + 2] == Stone::None && w[i + 3] == Stone::Us && w[i + 4] == Stone::Us)
+            return PatternType::OpenTwo;
+
     // detect broken two - .X.X.
     for (int i = 1; i <= 4; ++i)
         if (w[i - 1] == Stone::None && w[i] == Stone::Us && w[i + 1] == Stone::None && w[i + 2] == Stone::Us && w[i + 3] == Stone::None)
@@ -132,39 +128,53 @@ static PatternType ClassifyWindow(const Stone* w)
         if (w[i] == Stone::None && w[i + 1] == Stone::None && w[i + 2] == Stone::Us && w[i + 3] == Stone::None && w[i + 4] == Stone::Us)
             return PatternType::BrokenTwo;
 
+    // detect broken two - X..X.
+    for (int i = 1; i <= 4; ++i)
+        if (w[i - 1] == Stone::Us && w[i] == Stone::None && w[i + 1] == Stone::None && w[i + 2] == Stone::Us && w[i + 3] == Stone::None)
+            return PatternType::BrokenTwo;
+
+    // detect broken two - .X..X
+    for (int i = 0; i <= 4; ++i)
+        if (w[i] == Stone::None && w[i + 1] == Stone::Us && w[i + 2] == Stone::None && w[i + 3] == Stone::None && w[i + 4] == Stone::Us)
+            return PatternType::BrokenTwo;
+
     // detect broken two - X...X
     for (int i = 0; i <= 4; ++i)
         if (w[i] == Stone::Us && w[i + 1] == Stone::None && w[i + 2] == Stone::None && w[i + 3] == Stone::None && w[i + 4] == Stone::Us)
             return PatternType::BrokenTwo;
 
-    // Singles:
-
-    // detect X....
-    for (int i = 0; i <= 4; ++i)
-        if (w[i] == Stone::Us && w[i + 1] == Stone::None && w[i + 2] == Stone::None && w[i + 3] == Stone::None && w[i + 4] == Stone::None)
-            return PatternType::Single;
-
-    // detect .X...
-    for (int i = 0; i <= 4; ++i)
-        if (w[i] == Stone::None && w[i + 1] == Stone::Us && w[i + 2] == Stone::None && w[i + 3] == Stone::None && w[i + 4] == Stone::None)
-            return PatternType::Single;
-
-    // detect ..X..
-    for (int i = 0; i <= 4; ++i)
-        if (w[i] == Stone::None && w[i + 1] == Stone::None && w[i + 2] == Stone::Us && w[i + 3] == Stone::None && w[i + 4] == Stone::None)
-            return PatternType::Single;
-
-    // detect ...X.
-    for (int i = 0; i <= 4; ++i)
-        if (w[i] == Stone::None && w[i + 1] == Stone::None && w[i + 2] == Stone::None && w[i + 3] == Stone::Us && w[i + 4] == Stone::None)
-            return PatternType::Single;
-
-    // detect ....X
-    for (int i = 0; i <= 4; ++i)
-        if (w[i] == Stone::None && w[i + 1] == Stone::None && w[i + 2] == Stone::None && w[i + 3] == Stone::None && w[i + 4] == Stone::Us)
-            return PatternType::Single;
-
     return PatternType::None;
+}
+
+PatternType CombineThreats(const PatternType dir[4])
+{
+    uint32_t open4 = 0;
+    uint32_t four = 0;
+    uint32_t open3 = 0;
+
+    PatternType best = PatternType::None;
+
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        best = std::max(best, dir[i]);
+
+        if (dir[i] == PatternType::OpenFour)
+            open4++;
+        else if (dir[i] == PatternType::BrokenFour || dir[i] == PatternType::ClosedFour)
+            four++;
+        else if (dir[i] == PatternType::OpenThree)
+            open3++;
+    }
+
+    // double-four = forced win
+    if (open4 >= 2)
+        return PatternType::FiveInARow;
+
+    // double-three usually decisive
+    if (open3 >= 2)
+        return PatternType::OpenFour;
+
+    return best;
 }
 
 void InitializePatternTable()

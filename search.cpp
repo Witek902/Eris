@@ -30,16 +30,25 @@ struct Node
     Position& position;
 
     int32_t ply = 0;
+    Move lastMove = Move::Invalid();
 
     // principal variation moves
     Move pvLine[SQUARE_COUNT];
     uint32_t pvLength = 0;
 };
 
+enum class NodeType : uint8_t
+{
+    Root,
+    PV,
+    NonPV,
+};
+
+template<NodeType T>
 int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha, int32_t beta)
 {
-    const bool isRootNode = node.ply == 0;
-    const bool isPvNode = alpha < beta;
+    constexpr bool isRootNode = (T == NodeType::Root);
+    constexpr bool isPvNode = (T == NodeType::PV || isRootNode);
     const int32_t originalAlpha = alpha;
 
     // clear PV line
@@ -106,7 +115,7 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
     for (uint32_t i = 0; i < movesCount; i++)
     {
         if (moves[i] == ttMove)
-            moveScores[i] = INT32_MAX; 
+            moveScores[i] = INT32_MAX;
         else if (moves[i] == context.killers[node.ply][0])
             moveScores[i] = INT32_MAX - 1;
         else if (moves[i] == context.killers[node.ply][1])
@@ -144,18 +153,19 @@ int32_t NegaMax(Node& node, SearchContext& context, int32_t depth, int32_t alpha
 
         Node childNode{ node.position };
         childNode.ply = node.ply + 1;
+        childNode.lastMove = move;
 
         // principal variation search
         int32_t score;
         if (i == 0)
         {
-            score = -NegaMax(childNode, context, depth - 1, -beta, -alpha);
+            score = -NegaMax<NodeType::PV>(childNode, context, depth - 1, -beta, -alpha);
         }
         else
         {
-            score = -NegaMax(childNode, context, depth - 1, -(alpha + 1), -alpha);
+            score = -NegaMax<NodeType::NonPV>(childNode, context, depth - 1, -(alpha + 1), -alpha);
             if (score > alpha && score < beta)
-                score = -NegaMax(childNode, context, depth - 1, -beta, -alpha);
+                score = -NegaMax<NodeType::PV>(childNode, context, depth - 1, -beta, -alpha);
         }
 
         node.position.UnmakeMove(moves[i]);
@@ -204,7 +214,7 @@ void DoSearch(const SearchParams& params, Move& outBestMove, int32_t& outScore)
     SearchContext context{ params.tt };
     context.endTime = startTime + params.maxTime;
 
-    for (int p = 0; p < SQUARE_COUNT; ++p)
+    for (uint32_t p = 0; p < SQUARE_COUNT; ++p)
     {
         context.killers[p][0] = Move::Invalid();
         context.killers[p][1] = Move::Invalid();
@@ -220,7 +230,7 @@ void DoSearch(const SearchParams& params, Move& outBestMove, int32_t& outScore)
 
         const int32_t alpha = -INF_VALUE;
         const int32_t beta = INF_VALUE;
-        int32_t score = NegaMax(rootNode, context, depth, alpha, beta);
+        int32_t score = NegaMax<NodeType::Root>(rootNode, context, depth, alpha, beta);
 
         // check if time limit exceeded
         auto currentTime = std::chrono::high_resolution_clock::now();

@@ -8,7 +8,6 @@
 enum class PatternType : uint8_t
 {
     None,
-    Single,         // X...., .X..., etc.
     OpenTwo,        // .XX..
     BrokenTwo,      // .X.X.
     OpenThree,      // .XXX.
@@ -31,6 +30,11 @@ INLINE static uint32_t EncodeWindow(const Stone* w)
     }
     return code;
 }
+
+PatternType CombineThreats(const PatternType dir[4]);
+
+
+// precomputed pattern table
 
 static constexpr uint32_t PatternTableSize = 19683; // 3^9
 extern PatternType gPatternTable[PatternTableSize];

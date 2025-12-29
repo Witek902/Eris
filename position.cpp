@@ -26,7 +26,7 @@ Position::Position()
         {
             for (uint32_t dir = 0; dir < 4; ++dir)
             {
-                m_patterns[i][color][dir] = PatternType::None;
+                m_threats[i][color][dir] = PatternType::None;
             }
         }
     }
@@ -63,15 +63,27 @@ GameResult Position::GetGameResult() const
     if (m_lastMove == Move::Invalid())
         return GameResult::InProgress;
 
+    const int32_t x = m_lastMove.m_index % BOARD_SIZE;
+    const int32_t y = m_lastMove.m_index / BOARD_SIZE;
+
     // check if black has connected five
     for (uint32_t dir = 0; dir < 4; ++dir)
-        if (m_patterns[m_lastMove.m_index][0][dir] == PatternType::FiveInARow)
-            return GameResult::BlackWins;
+    {
+        Stone window[WINDOW_SIZE];
+        BuildWindow<WINDOW_SIZE>(x, y, dxs[dir], dys[dir], ~m_sideToMove, window);
 
-    // check if white has connected five
-    for (uint32_t dir = 0; dir < 4; ++dir)
-        if (m_patterns[m_lastMove.m_index][1][dir] == PatternType::FiveInARow)
-            return GameResult::WhiteWins;
+        const uint32_t patternCode = EncodeWindow<WINDOW_SIZE>(window);
+        ASSERT(patternCode < PatternTableSize);
+
+        PatternType pattern = gPatternTable[patternCode];
+        if (pattern == PatternType::FiveInARow)
+        {
+            if (~m_sideToMove == Stone::Black)
+                return GameResult::BlackWins;
+            else
+                return GameResult::WhiteWins;
+        }
+    }
 
     // game is still in progress
     if (m_movesPlayed < BOARD_SIZE * BOARD_SIZE)
@@ -127,9 +139,16 @@ void Position::PrintThreats() const
             for (uint32_t x = 0; x < BOARD_SIZE; ++x)
             {
                 const uint32_t squareIndex = x + y * BOARD_SIZE;
+
+                if (m_board[squareIndex] != Stone::None)
+                {
+                    std::cout << "####|";
+                    continue;
+                }
+
                 for (uint32_t dir = 0; dir < 4; ++dir)
                 {
-                    const PatternType pt = m_patterns[squareIndex][color][dir];
+                    const PatternType pt = m_threats[squareIndex][color][dir];
                     char c = ' ';
                     switch (pt)
                     {
@@ -143,7 +162,6 @@ void Position::PrintThreats() const
                     case PatternType::BrokenFour:    c = 'f'; break;
                     case PatternType::ClosedFour:    c = 'd'; break;
                     case PatternType::FiveInARow:    c = 'X'; break;
-                    case PatternType::Single:        c = 's'; break;
                     default: DEBUG_BREAK(); break;
                     }
                     std::cout << c;
@@ -289,37 +307,44 @@ void Position::GenerateMoves(Move* moves, uint32_t& count) const
 
 int32_t Position::ScoreMove(const Move move) const
 {
+    int32_t score = 0;
+
     const int32_t x0 = move.m_index % BOARD_SIZE;
     const int32_t y0 = move.m_index / BOARD_SIZE;
 
-    PatternType bestPattern = PatternType::None;
-    for (uint32_t dir = 0; dir < 4; ++dir)
+    // check opponent's patterns in all directions
+    const PatternType oppPattern = CombineThreats(m_threats[move.m_index][static_cast<uint8_t>(~m_sideToMove) - 1]);
+    switch (oppPattern)
     {
-        Stone window[9];
-        BuildWindow<9>(x0, y0, dxs[dir], dys[dir], m_sideToMove, window);
-        window[4] = Stone::Us; // simulate the move
-
-        const uint32_t patternCode = EncodeWindow<9>(window);
-        ASSERT(patternCode < PatternTableSize);
-
-        PatternType pattern = gPatternTable[patternCode];
-        if (pattern > bestPattern)
-            bestPattern = pattern;
+    case PatternType::FiveInARow:   score += 1'000'000'000; break;
+    case PatternType::OpenFour:     score += 100'000'000; break;
+    case PatternType::ClosedFour:   score += 10'000'000; break;
+    case PatternType::BrokenFour:   score += 1'000'000; break;
+    case PatternType::OpenThree:    score += 10'000; break;
+    case PatternType::ClosedThree:  score += 2'000; break;
+    case PatternType::BrokenThree:  score += 1'000; break;
+    case PatternType::OpenTwo:      score += 500; break;
+    case PatternType::BrokenTwo:    score += 100; break;
+    default:                        break;
     }
 
-    switch (bestPattern)
+    // check our patterns in all directions
+    const PatternType ourPattern = CombineThreats(m_threats[move.m_index][static_cast<uint8_t>(m_sideToMove) - 1]);
+    switch (ourPattern)
     {
-    case PatternType::FiveInARow:    return 100000;
-    case PatternType::OpenFour:      return 10000;
-    case PatternType::ClosedFour:    return 5000;
-    case PatternType::BrokenFour:    return 2000;
-    case PatternType::OpenThree:     return 500;
-    case PatternType::ClosedThree:   return 200;
-    case PatternType::BrokenThree:   return 100;
-    case PatternType::OpenTwo:       return 50;
-    case PatternType::BrokenTwo:     return 10;
-    default:                        return 0;
+    case PatternType::FiveInARow:   score += 1'000'000'000; break;
+    case PatternType::OpenFour:     score += 100'000'000; break;
+    case PatternType::ClosedFour:   score += 10'000'000; break;
+    case PatternType::BrokenFour:   score += 1'000'000; break;
+    case PatternType::OpenThree:    score += 10'000; break;
+    case PatternType::ClosedThree:  score += 2'000; break;
+    case PatternType::BrokenThree:  score += 1'000; break;
+    case PatternType::OpenTwo:      score += 500; break;
+    case PatternType::BrokenTwo:    score += 100; break;
+    default:                        break;
     }
+
+    return score;
 }
 
 template<uint32_t WindowSize>
@@ -349,10 +374,12 @@ void Position::BuildWindow(int32_t x, int32_t y, int32_t dx, int32_t dy, Stone u
 
 PatternType Position::EvalDirection(int32_t x, int32_t y, int dx, int dy, Stone us) const
 {
-    Stone window[9];
-    BuildWindow<9>(x, y, dx, dy, us, window);
+    Stone window[WINDOW_SIZE];
+    BuildWindow<WINDOW_SIZE>(x, y, dx, dy, us, window);
 
-    const uint32_t patternCode = EncodeWindow<9>(window);
+    window[WINDOW_SIZE / 2] = Stone::Us; // simulate the move
+
+    const uint32_t patternCode = EncodeWindow<WINDOW_SIZE>(window);
     ASSERT(patternCode < PatternTableSize);
 
     return gPatternTable[patternCode];
@@ -366,7 +393,7 @@ void Position::EvaluatePatternsAtSquare(int32_t x, int32_t y, uint32_t dir)
     for (uint32_t color = 0; color < 2; ++color)
     {
         const Stone us = (color == 0) ? Stone::Black : Stone::White;
-        m_patterns[squareIndex][color][dir] = EvalDirection(x, y, dxs[dir], dys[dir], us);
+        m_threats[squareIndex][color][dir] = EvalDirection(x, y, dxs[dir], dys[dir], us);
     }
 }
 
